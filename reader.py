@@ -1,9 +1,10 @@
 r_path = 'model.py'
-w_path = 'field.py'
+w_path = 'scaffold.py'
 
 import logging
 import os
-from mollify_config import DataConfig
+from mollify_config import DataConfig as config
+from scaffold import Scaffold
 from pprint import pprint
 
 logging.basicConfig(filename='tryrun.log', level=logging.DEBUG)
@@ -12,19 +13,28 @@ class CliCtl:
 	"""
 	"""
 
-	def __init__():
+	def __init__(self):
 		"""
 		"""
 		self.stage = ""
+
 
 class MainCtl:
 	"""
 	"""
 
-	def __init__()
+	def __init__(self):
+		self.txt = Scaffold()
 		self.stage = ""
+		self.files = {"__init__.py": {"stages": True,
+										"filename": '__init__.py',
+										"path": False,
+										"stage1": {"src": self.txt.init_txt, 
+													"required": {"<APP_NAME>": config.APP_NAME}},
+										"stage2": {"src": self.txt.init_api}}}
+		
 
-	def mkmdirs():
+	def mkmdirs(self):
 		self.stage = "create directories"
 		run_eval = None
 		home = os.getcwd()
@@ -35,6 +45,133 @@ class MainCtl:
 			run_eval = "2"
 		finally:
 			print(run_eval)
+
+	def text_array(self):
+		txt = self.txt.init_txt(1)[10:-8].splitlines()
+		text_array = []
+		for text in txt:
+			indent = 0
+			counter = 0
+			for char in text:
+				if char == " ":
+					indent += 1
+				else:
+					break
+				counter += 1
+			if indent < len(text):
+				indent_level = (indent - 8) / 4
+				text_array.append([int(indent_level), text.strip()])
+		return array
+
+	def replicate(self, text, destination):
+		return None
+
+	def customize(self, filename, **kwargs):
+		gen = self.files[filename]
+		if gen["stages"] == True:
+			if "stage" in kwargs.keys():
+				if isinstance(kwargs["stage"], int):
+					key = "stage" + str(kwargs["stage"])
+					gen = gen[key] #jinkies!
+					text = gen["src"](kwargs["stage"])
+		else:
+			text = gen["src"]()
+		for var in gen["required"].keys():
+			print(gen["required"][var])
+			custom_text = text.replace(key, gen["required"][var])
+		print(custom_text)
+
+	def iter1(self):
+		self.replicate(self.txt.init_py(1), "text.py")
+
+	def assess_filetree(self):
+		complete = {"flask_dir": {"__init__.py": {"found": False,
+															"name": "__init__",
+															"complete": False,
+															"exists_iter": 1,
+															"complete_iter": 2,
+															"type": "file",
+															"extension": ".py"}, 
+											"setup.py": {"found": False,
+															"name": "setup",
+															"complete": False,
+															"exists_iter": 1,
+															"complete_iter": 1,
+															"type": "file",
+															"extension": ".py"},
+											"model.py": {"found": False,
+															"complete": False,
+															"name": "model",
+															"exists_iter": 1,
+															"complete_iter": 1,
+															"type": "file",
+															"extension": ".py"},
+											"static": {"found": False,
+															"complete": False,
+															"name": "static",
+															"exists_iter": 2,
+															"complete_iter": 2,
+															"type": "dir"},
+											"templates": {"found": False,
+															"complete": False,
+															"name": "templates",
+															"exists_iter": 2,
+															"complete_iter": 2,
+															"type": "dir"},
+											"views": {"found": False,
+															"complete": False,
+															"name": "",
+															"exists_iter": 2,
+															"complete_iter": 2,
+															"type": "dir"}},
+							"project_root": {"requirements.txt": {"found": False,
+															"name": "",
+															"complete": False,
+															"exists_iter": 1,
+															"complete_iter": 2,
+															"type": "",
+															"extension": ""},
+												".flaskenv": {"found": False,
+															"name": "",
+															"complete": False,
+															"exists_iter": 1,
+															"complete_iter": 2,
+															"type": "",
+															"extension": ""},
+												"Makefile": {"found": False,
+															"name": "",
+															"complete": False,
+															"exists_iter": 1,
+															"complete_iter": 2,
+															"type": "",
+															"extension": None},
+												"flask_dir": {"found": False,
+															"name": config.APP_NAME,
+															"complete": False,
+															"exists_iter": 1,
+															"complete_iter": 2,
+															"type": "dir"}},
+							"static": {"found": False,
+															"name": "",
+															"complete": False,
+															"exists_iter": 1,
+															"complete_iter": 2,
+															"type": "",
+															"extension": ""},
+							"templates": {"found": False,
+															"name": "",
+															"complete": False,
+															"exists_iter": 1,
+															"complete_iter": 2,
+															"type": "",
+															"extension": ""},
+							"views":			{"found": False,
+															"name": "",
+															"complete": False,
+															"exists_iter": 1,
+															"complete_iter": 2,
+															"type": "",
+															"extension": ""}}
 
 class DBText:
 
@@ -659,3 +796,5 @@ for item in model_list:
 		item = DBText(item, i)
 '''
 
+control = MainCtl()
+control.customize("__init__.py", stage=1)

@@ -36,3 +36,10 @@ _
 ## How To Use It
 Clone this repo and open the mollify_config file to alter the name and 
 specify your local database connection. 
+
+#### Making a Database in PostgreSQL
+
+Here's a quick refresher on creating a database in 
+1. Ensure you are running a version of python3
+2. Endsure postgresql is installed on your system 
+	- if it isn't, install it with `pip`
