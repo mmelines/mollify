@@ -46,27 +46,49 @@ class MainCtl:
 		finally:
 			print(run_eval)
 
-	def text_array(self):
-		txt = self.txt.init_txt(1)[10:-8].splitlines()
+	def text_array(self, txt):
 		text_array = []
-		for text in txt:
+		prev_whitespace = False
+		i = 0
+		for text in txt.splitlines():
 			indent = 0
-			counter = 0
 			for char in text:
 				if char == " ":
 					indent += 1
 				else:
 					break
-				counter += 1
+			if indent == len(text):
+				if prev_whitespace == False and i > 0:
+					text_array.append(["whitespace"])
+				prev_whitespace = True
 			if indent < len(text):
 				indent_level = (indent - 8) / 4
 				text_array.append([int(indent_level), text.strip()])
-		return array
+				prev_whitespace = False
+			i += 1
+		return text_array
 
 	def replicate(self, text, destination):
-		return None
+		text_array = self.text_array(text)
+		with open(destination, 'a') as file:
+			for line in text_array:
+				if line == ["whitespace"]:
+					file.write('\n')
+				else:
+					indent = "    " * line[0] if line[0] > 0 else ""
+					file.write(indent + line[1] + "\n")
 
-	def customize(self, filename, **kwargs):
+	def customize(self, text, values):
+		start = text.find("start_read") + 10
+		end = text.find("end_read")
+		if start > -1 and end > 0:
+			custom_text = text[start:end]
+			for key in values.keys():
+				custom_text = custom_text.replace(key, values[key])
+			return custom_text
+		return "-1"
+
+	def generate(self, filename, **kwargs):
 		gen = self.files[filename]
 		if gen["stages"] == True:
 			if "stage" in kwargs.keys():
@@ -76,10 +98,10 @@ class MainCtl:
 					text = gen["src"](kwargs["stage"])
 		else:
 			text = gen["src"]()
-		for var in gen["required"].keys():
-			print(gen["required"][var])
-			custom_text = text.replace(key, gen["required"][var])
-		print(custom_text)
+		text = self.customize(text, gen["required"])
+		path = "test.py"
+		# path = gen["path"] + "/" + gen["filename"]
+		self.replicate(text, path)
 
 	def iter1(self):
 		self.replicate(self.txt.init_py(1), "text.py")
@@ -797,4 +819,4 @@ for item in model_list:
 '''
 
 control = MainCtl()
-control.customize("__init__.py", stage=1)
+control.generate("__init__.py", stage=1)
