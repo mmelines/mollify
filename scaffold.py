@@ -26,12 +26,46 @@ class Scaffold:
             from <APP_NAME>.api import mapi
             app.register_blueprint(mapi)
         end_read"""
+        #
+        self.model_py = """start_read
+        from flask_sqlalchemy import SQLAlchemy
+
+        db = SQLAlchemy()
+        end_read"""
+        # 
+        self.config = """start_read
+        class Config(object):
+            TESTING=False
+            SQLALCHEMY_TRACK_MODIFICATIONS=False
+
+        class ProductionConfig(Config):
+            SQLALCHEMY_DATABASE_URI = "<DB_URI>"
+
+        class DevelopmentConfig(Config):
+            SQLALCHEMY_DATABASE_URI = "<TEST_DB_URI>"
+            FLASK_ENV = 'development'
+            TESTING=True
+
+        class TestingConfig(Config):
+            SQLALCHEMY_DATABASE_URI = "<TEST_DB_URI>"
+            TESTING=True
+
+        end_read"""
 
     def init_txt(self, stage):
         if stage == 1: 
             return self.init_py
         if stage == 2:
             return self.init_api
+
+    def setup_txt(self):
+        return False
+
+    def model_txt(self):
+        return self.model_py
+
+    def config_txt(self):
+        return self.config
 
     def __iter__(self):
         yield ("init", self.init_py)

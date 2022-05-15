@@ -13,10 +13,22 @@ class CliCtl:
 	"""
 	"""
 
-	def __init__(self):
+	def __init__(self, control_obj):
 		"""
 		"""
-		self.stage = ""
+		self.ctl = control_obj
+		self.stage = self.ctl.stage
+		self.stage_switch()
+
+	def stage_switch(self):
+		if self.stage == -1:
+			print("error; exiting")
+		if self.stage == 1:
+			print("Welcome to Mollify\nInitiating Stage 1 Run")
+			print("\n"*2)
+			self.ctl.iter1()
+		else:
+			print("stage " + str(self.stage) + " found but not defined")
 
 
 class MainCtl:
@@ -25,15 +37,44 @@ class MainCtl:
 
 	def __init__(self):
 		self.txt = Scaffold()
-		self.stage = ""
+		self.dirs = {}
+		self.has_dirs = False
+		self.stage = self.eval_stage()
+		self.iter_lists = {}
 		self.files = {"__init__.py": {"stages": True,
 										"filename": '__init__.py',
-										"path": False,
 										"stage1": {"src": self.txt.init_txt, 
 													"required": {"<APP_NAME>": config.APP_NAME}},
-										"stage2": {"src": self.txt.init_api}}}
+										"stage2": {"src": self.txt.init_api}},
+						"setup.py": {"stages": False,
+										"filename": 'setup.py',
+										"src": self.txt.setup_txt,
+										"required": {}},
+						"model.py": {"stages": False,
+										"filename": 'model.py',
+										"src": self.txt.model_txt,
+										"required": {}},
+						"config.py": {"stages": False,
+										"filename": 'config.py',
+										"src": self.txt.config_txt,
+										"required": {"<DB_URI>": config.SQLALCHEMY_DATABASE_URL,
+													"<TEST_DB_URI>": config.TEST_SQLALCHEMY_DATABASE_URL}}}
+		self.assess_filetree()
+		print("STAGE " + str(self.stage) + " RUN")
 		
-
+	def eval_stage(self):
+		stage = -1
+		if self.has_dirs == False:
+			stage = 1
+		if hasattr(self.dirs, config.APP_NAME):
+			model = self.dirs[config.APP_NAME]["model.py"]
+			if model["found"] == False:
+				stage = 2
+			else:
+				if model["complete"] == False:
+					stage = 3
+		return stage
+	
 	def mkmdirs(self):
 		self.stage = "create directories"
 		run_eval = None
@@ -50,6 +91,8 @@ class MainCtl:
 		text_array = []
 		prev_whitespace = False
 		i = 0
+		if txt[0] == "#":
+			return [[0, txt]]
 		for text in txt.splitlines():
 			indent = 0
 			for char in text:
@@ -79,32 +122,68 @@ class MainCtl:
 					file.write(indent + line[1] + "\n")
 
 	def customize(self, text, values):
+		text = str(text)
 		start = text.find("start_read") + 10
 		end = text.find("end_read")
 		if start > -1 and end > 0:
 			custom_text = text[start:end]
 			for key in values.keys():
 				custom_text = custom_text.replace(key, values[key])
-			return custom_text
-		return "-1"
+			return custom_text			
+		return "#intentionally blank"
 
-	def generate(self, filename, **kwargs):
-		gen = self.files[filename]
+	def generate(self, gen, **kwargs):
 		if gen["stages"] == True:
 			if "stage" in kwargs.keys():
 				if isinstance(kwargs["stage"], int):
 					key = "stage" + str(kwargs["stage"])
-					gen = gen[key] #jinkies!
+					gen["src"] = gen[key]["src"] #jinkies!
+					gen["required"] = gen[key]["required"]
 					text = gen["src"](kwargs["stage"])
 		else:
 			text = gen["src"]()
 		text = self.customize(text, gen["required"])
-		path = "test.py"
-		# path = gen["path"] + "/" + gen["filename"]
-		self.replicate(text, path)
+		self.replicate(text, gen["path"])
+
+	def take_step(self, obj):
+		if hasattr(obj, "inst"):
+			print("special instructions")
+		else:
+			ctl_var = False
+			try:
+				if os.stat(obj["path"]).st_size == 0: 
+					#prevent re-write/duplicate
+					ctl_var = True
+			except FileNotFoundError:
+				#write file if it doesn't exist
+				ctl_var = True
+			finally:
+				if ctl_var == True:
+					obj["info"]["path"] = obj["path"]
+					if obj["info"]["stages"] == True:
+						self.generate(obj["info"], stage=1)
+					else:
+						self.generate(obj["info"])
 
 	def iter1(self):
-		self.replicate(self.txt.init_py(1), "text.py")
+		flask_main = self.dirs[config.APP_NAME]
+		pprint(flask_main)
+		steps = [flask_main["__init__.py"], 
+					flask_main["setup.py"], 
+					flask_main["model.py"], 
+					flask_main["config.py"]]
+		for step in steps:
+			print("*"*25 +"STEP " + str(step) + ".")
+			print(step)
+			self.take_step(step)
+
+	def static_css():
+		print("static")
+		return None
+
+	def js_libs():
+		print("js_libs")
+		return None
 
 	def assess_filetree(self):
 		complete = {"flask_dir": {"__init__.py": {"found": False,
@@ -113,9 +192,16 @@ class MainCtl:
 															"exists_iter": 1,
 															"complete_iter": 2,
 															"type": "file",
-															"extension": ".py"}, 
+															"extension": ".py"},
 											"setup.py": {"found": False,
 															"name": "setup",
+															"complete": False,
+															"exists_iter": 1,
+															"complete_iter": 1,
+															"type": "file",
+															"extension": ".py"},
+											"config.py": {"found": False,
+															"name": "config",
 															"complete": False,
 															"exists_iter": 1,
 															"complete_iter": 1,
@@ -145,55 +231,190 @@ class MainCtl:
 															"name": "",
 															"exists_iter": 2,
 															"complete_iter": 2,
-															"type": "dir"}},
+															"type": "dir"},
+											"relative_path": "/<APP_NAME>"},
 							"project_root": {"requirements.txt": {"found": False,
-															"name": "",
+															"name": "requirements",
 															"complete": False,
 															"exists_iter": 1,
 															"complete_iter": 2,
-															"type": "",
-															"extension": ""},
+															"type": "file",
+															"extension": ".txt"},
 												".flaskenv": {"found": False,
-															"name": "",
+															"name": ".flaskenv",
 															"complete": False,
 															"exists_iter": 1,
 															"complete_iter": 2,
-															"type": "",
+															"type": "file",
 															"extension": ""},
 												"Makefile": {"found": False,
-															"name": "",
+															"name": "Makefile",
 															"complete": False,
 															"exists_iter": 1,
 															"complete_iter": 2,
-															"type": "",
-															"extension": None},
+															"type": "file",
+															"extension": ""},
 												"flask_dir": {"found": False,
 															"name": config.APP_NAME,
 															"complete": False,
 															"exists_iter": 1,
 															"complete_iter": 2,
-															"type": "dir"}},
-							"static": {"found": False,
-															"name": "",
+															"type": "dir"},
+												'relative_path': ''},
+							"static": {"css": {"found": False,
+															"name": "css",
 															"complete": False,
 															"exists_iter": 1,
 															"complete_iter": 2,
-															"type": "",
-															"extension": ""},
-							"templates": {"found": False,
-															"name": "",
+															"type": "dir"},
+											"js": {"found": False,
+															"name": "js",
 															"complete": False,
 															"exists_iter": 1,
 															"complete_iter": 2,
-															"type": "",
-															"extension": ""},
-							"views":			{"found": False,
-															"name": "",
+															"type": "dir"},
+											"img": {"found": False,
+															"name": "img",
 															"complete": False,
 															"exists_iter": 1,
 															"complete_iter": 2,
-															"type": "",
-															"extension": ""}}
+															"type": "dir"},
+										"relative_path": "/<APP_NAME>/static"},
+							"css": {"relative_path": "/<APP_NAME>/css",
+									"inst": self.static_css},
+							"js": {"libs": {"found": False,
+															"name": "libs",
+															"complete": False,
+															"exists_iter": 1,
+															"complete_iter": 2,
+															"type": "dir"},
+									"site_scripts.js": {"found": False,
+															"name": "site_scripts",
+															"complete": False,
+															"exists_iter": 1,
+															"complete_iter": 2,
+															"type": "file",
+															"extension": ".js"},
+									"form_scripts.js": {"found": False,
+															"name": "form_scripts",
+															"complete": False,
+															"exists_iter": 1,
+															"complete_iter": 2,
+															"type": "file",
+															"extension": ".js"},
+										"relative_path": "/<APP_NAME>/js"},
+							"libs": {"relative_path": "/<APP_NAME>/js/libs",
+										"inst": self.js_libs},
+							"img": {"relative_path": "/<APP_NAME>/img"},
+							"templates": { "errors": {"found": False,
+															"name": "errors",
+															"complete": False,
+															"exists_iter": 1,
+															"complete_iter": 2,
+															"type": "dir"},
+											"forms": {"found": False,
+															"name": "forms",
+															"complete": False,
+															"exists_iter": 1,
+															"complete_iter": 2,
+															"type": "dir"},
+											"layout": {"found": False,
+															"name": "layout",
+															"complete": False,
+															"exists_iter": 1,
+															"complete_iter": 2,
+															"type": "dir"},
+											"pages": {"found": False,
+															"name": "pages",
+															"complete": False,
+															"exists_iter": 1,
+															"complete_iter": 2,
+															"type": "dir"},
+											"relative_path": "/<APP_NAME>/templates"},
+							"errors": {"404.html": {"found": False,
+															"name": "404",
+															"complete": False,
+															"exists_iter": 1,
+															"complete_iter": 2,
+															"type": "file",
+															"extension": ".html"},
+											"500.html": {"found": False,
+																"name": "500",
+																"complete": False,
+																"exists_iter": 1,
+																"complete_iter": 2,
+																"type": "html",
+																"extension": ".html"},
+											"relative_path": "/<APP_NAME>/templates/errors"},
+							"forms":	{"relative_path": "/<APP_NAME>/templates/forms"},
+							"layouts":	{"main.html": {"found": False,
+															"name": "main",
+															"complete": False,
+															"exists_iter": 1,
+															"complete_iter": 2,
+															"type": "file",
+															"extension": "html"},
+										"form.html": {"found": False,
+															"name": "form",
+															"complete": False,
+															"exists_iter": 1,
+															"complete_iter": 2,
+															"type": "file",
+															"extension": ".html"},
+										"relative_path": "/<APP_NAME>/templates/layouts"},
+							"pages":	{"index.html": {"found": False,
+															"name": "index",
+															"complete": False,
+															"exists_iter": 1,
+															"complete_iter": 2,
+															"type": "file",
+															"extension": ".html"},
+											"relative_path": "/<APP_NAME>/templates/pages"}}
+		rootdir = os.getcwd() + "/" + config.APP_NAME
+		i = 0
+		# create root path if it doesn't exist
+		if not os.path.exists(rootdir):
+			os.makedirs(rootdir, exist_ok=False)
+		if self.has_dirs == False:
+			for dirname in complete.keys():
+				print(dirname)
+				# set path and remove relative path placeholder
+				rel_path = complete[dirname]["relative_path"]
+				rel_path = rel_path.replace("<APP_NAME>", config.APP_NAME)
+				path = rootdir + rel_path
+				complete[dirname]["path"] = path
+				del complete[dirname]["relative_path"]
+				# see if path exists
+				if not os.path.exists(path):
+					os.makedirs(path, exist_ok=False)
+				content = os.listdir(path)
+				# check content of path
+				for item in content:
+					if item in complete[dirname].keys():
+						complete[dirname][item]["found"] = True
+				# include file instructions
+				for item in complete[dirname].keys():
+					if isinstance(complete[dirname][item], dict):
+						complete[dirname][item]["path"] = path+"/"+item
+						if complete[dirname][item]["type"] == "file":
+							obj = complete[dirname][item]
+							print(obj)
+							filename = obj["name"] + obj["extension"]
+							print("??????"+filename)
+							if filename in self.files.keys():
+								print("!!!!!!!!!!!")
+								print(self.files[filename])
+								obj["info"] = self.files[filename]
+								print(obj)
+								print("\n"*2)
+				# change default name for project_root and flask_dir
+				if dirname in ["project_root", "flask_dir"]:
+					complete[dirname]["role"] = dirname
+					if dirname == "flask_dir":
+						self.dirs[config.APP_NAME] = complete[dirname]
+				else:
+					self.dirs[dirname] = complete[dirname]
+			self.has_dirs = True
 
 class DBText:
 
@@ -819,4 +1040,5 @@ for item in model_list:
 '''
 
 control = MainCtl()
-control.generate("__init__.py", stage=1)
+interface = CliCtl(control)
+#control.generate("__init__.py", stage=1)

@@ -1,7 +1,7 @@
 class DataConfig:
 	reader_path = 'model.py'
 	writer_path = './writer.py'
-	SQLALCHEMY_DATABASE_URL = "default"
-	TEST_SQLALCHEMY_DATABASE_URL = "default"
+	SQLALCHEMY_DATABASE_URL = "postgresql://mollify@localhost/mollify_default"
+	TEST_SQLALCHEMY_DATABASE_URL = "postgresql://mollify@localhost/mollify_test"
 	APP_NAME = "default"
 	CONTAINER = True		
